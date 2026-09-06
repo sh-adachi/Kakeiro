@@ -1,0 +1,17 @@
+name: Check app
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test-and-build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test accounting logic
+        run: swift test
+      - name: Build iPhone simulator app
+        run: bash Scripts/build_simulator.sh
