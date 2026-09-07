@@ -24,3 +24,10 @@ Artifacts/Attachments/
 *.pem
 secrets/
 credentials*.json
+.venv/
+__pycache__/
+*.pyc
+Backend/data/
+*.sqlite
+*.sqlite-*
+*.server.lock

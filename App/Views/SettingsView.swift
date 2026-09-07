@@ -25,7 +25,7 @@ struct SettingsView: View {
     var body: some View {
         Form {
             Section {
-                HStack { IconTile(symbol: "leaf.fill"); VStack(alignment: .leading, spacing: 5) { Text("かけいろ").font(.headline); Text("暮らしのお金を、ひとつに。 · v0.1").font(.caption).foregroundStyle(.secondary) } }
+                HStack { IconTile(symbol: "leaf.fill"); VStack(alignment: .leading, spacing: 5) { Text("かけいろ").font(.headline); Text("暮らしのお金を、ひとつに。 · v0.2").font(.caption).foregroundStyle(.secondary) } }
             }
             Section {
                 HStack { Text("月の予算"); Spacer(); TextField("150000", text: $budget).keyboardType(.numberPad).multilineTextAlignment(.trailing).accessibilityIdentifier("monthlyBudget"); Text("円") }
@@ -36,7 +36,7 @@ struct SettingsView: View {
                 }.accessibilityIdentifier("saveBudget")
             } header: { Text("予算") } footer: { Text("すべての月に同じ予算を適用します。0円にすると予算を表示しません。") }
             Section("明細の取り込み") {
-                NavigationLink { CSVImportView() } label: { Label("CSVから明細を取り込む", systemImage: "square.and.arrow.down") }.disabled(store.state.accounts.isEmpty)
+                NavigationLink { CSVImportView() } label: { Label("CSVから明細を取り込む", systemImage: "square.and.arrow.down") }.disabled(store.manualAccounts.isEmpty)
                 Button { export(data: Data(CSVImporter.template.utf8), type: .commaSeparatedText, name: "Kakeiro-template") } label: { Label("CSVテンプレートを保存", systemImage: "tablecells") }
             }
             Section {
@@ -44,9 +44,9 @@ struct SettingsView: View {
                 Button { restoring = true } label: { Label("バックアップから復元", systemImage: "arrow.counterclockwise") }
             } header: { Text("バックアップ") } footer: { Text("口座・明細・予算をJSONファイルに保存します。ファイルには家計情報が含まれます。アプリを削除する前にバックアップしてください。") }
             Section("保存と連携") {
-                Label("データはこのiPhone内に保存", systemImage: "iphone")
-                Label("自動連携は未接続", systemImage: "link")
-                Text("銀行のパスワードや証券のログイン情報は取得しません。クラウド同期、株価・為替の自動更新、Face IDによるアプリロックはありません。").font(.caption).foregroundStyle(.secondary)
+                Label("家計簿はこのiPhone内に保存", systemImage: "iphone")
+                NavigationLink { ConnectionsView() } label: { Label("自動連携と更新設定", systemImage: "link") }
+                Text("接続後は連携サーバーが金融データを取得し、このiPhoneに反映します。手動データはサーバーに送信しません。銀行・証券のパスワードはKakeiroに入力しません。").font(.caption).foregroundStyle(.secondary)
             }
             Section { Button("すべてのデータを削除", role: .destructive) { confirmClear = true } } footer: { Text("サンプルから使い始めた場合も、ここで空の家計簿に戻せます。") }
         }.navigationTitle("設定")
@@ -64,14 +64,14 @@ struct SettingsView: View {
         }
         .confirmationDialog("バックアップで置き換えますか？", isPresented: $confirmRestore, titleVisibility: .visible) {
             Button("復元する", role: .destructive) {
-                if let candidate = pendingRestore, store.commit(candidate) { budget = String(candidate.monthlyBudget); notice = "バックアップを復元しました。" }
+                if let candidate = pendingRestore, store.restoreBackup(candidate) { budget = String(candidate.monthlyBudget); notice = "バックアップを復元しました。" }
                 pendingRestore = nil
             }
             Button("キャンセル", role: .cancel) { pendingRestore = nil }
         } message: { Text("現在の口座・明細・予算を、口座\(pendingRestore?.accounts.count ?? 0)件・明細\(pendingRestore?.transactions.count ?? 0)件のバックアップに置き換えます。") }
         .confirmationDialog("すべてのデータを削除しますか？", isPresented: $confirmClear, titleVisibility: .visible) {
-            Button("すべて削除", role: .destructive) { if store.commit(LedgerState()) { budget = String(store.state.monthlyBudget) } }
-        } message: { Text("このiPhone内の口座・明細・予算を削除します。必要な場合は先にバックアップを保存してください。") }
+            Button("すべて削除", role: .destructive) { if store.restoreBackup(LedgerState()) { budget = String(store.state.monthlyBudget) } }
+        } message: { Text("このiPhone内の口座・明細・予算を削除します。必要な場合は先にバックアップを保存してください。自動連携の接続設定は残り、連携口座は次回更新時に再取得されます。停止する場合は連携画面で解除してください。") }
     }
 
     private func backup() {
@@ -94,7 +94,7 @@ struct CSVImportView: View {
     var body: some View {
         Form {
             Section("取り込み先") {
-                Picker("口座", selection: $accountID) { Text("選択してください").tag(Optional<UUID>.none); ForEach(store.state.accounts) { Text($0.name).tag(Optional($0.id)) } }
+                Picker("口座", selection: $accountID) { Text("選択してください").tag(Optional<UUID>.none); ForEach(store.manualAccounts) { Text($0.name).tag(Optional($0.id)) } }
                 Button("CSVファイルを選ぶ") { picking = true }.disabled(accountID == nil)
             }
             Section("取り込み形式") {
@@ -108,7 +108,7 @@ struct CSVImportView: View {
                 Text("開始残高は取り込む明細の前の残高に設定してください。現在残高と過去明細を両方加算すると残高がずれます。").font(.footnote)
             }.foregroundStyle(.secondary)
         }.navigationTitle("CSV取り込み").navigationBarTitleDisplayMode(.inline)
-        .onAppear { accountID = accountID ?? store.state.accounts.first?.id }
+        .onAppear { accountID = accountID ?? store.manualAccounts.first?.id }
         .fileImporter(isPresented: $picking, allowedContentTypes: [.commaSeparatedText, .plainText]) { result in
             do {
                 let data = try readSelectedFile(result.get(), limit: 32 * 1_024 * 1_024)

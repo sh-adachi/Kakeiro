@@ -8,8 +8,11 @@ public enum CSVImporter {
     /// account are skipped, including rows already present in the ledger.
     public static func importTransactions(text: String, accountID: UUID, into state: LedgerState) throws -> LedgerState {
         try LedgerValidation.validate(state)
-        guard state.accounts.contains(where: { $0.id == accountID }) else {
+        guard let account = state.accounts.first(where: { $0.id == accountID }) else {
             throw FinanceError.validation("CSVの取込先口座を選んでください。")
+        }
+        guard account.remote == nil else {
+            throw FinanceError.validation("自動連携口座にはCSVを取り込めません。補足データは手動口座に取り込んでください。")
         }
         guard text.utf8.count <= 32 * 1_024 * 1_024 else { throw FinanceError.invalidCSV(row: 1, reason: "ファイルは32MB以内にしてください。") }
         let rows = try CSVCodec.parse(text)
@@ -78,12 +81,17 @@ public enum CSVImporter {
 }
 
 public enum CSVExporter {
-    /// A six-column expense/income CSV matching the import template. Transfers are
-    /// excluded because they require two accounts. For a lossless full backup use
+    /// A six-column expense/income CSV matching the import template. Transfers and
+    /// provider-classified repayments are excluded. For a lossless full backup use
     /// LedgerRepository JSON; filter state.accounts/transactions for per-account CSVs.
-    public static func transactions(in state: LedgerState) -> String {
+    /// Reversals cannot be represented by this positive-amount CSV format. Reject
+    /// the export rather than relabeling refunds as income or silently omitting them.
+    public static func transactions(in state: LedgerState) throws -> String {
+        guard !state.transactions.contains(where: { $0.remote?.isReversal == true }) else {
+            throw FinanceError.validation("返金・取消を含む明細は、このCSV形式で正しく保存できません。JSONのバックアップを使用してください。")
+        }
         var rows = ["date,type,amount,category,merchant,note"]
-        rows += state.transactions.filter { $0.kind != .transfer }.sorted { $0.date < $1.date }.map {
+        rows += state.transactions.filter { $0.kind != .transfer && $0.remote?.excludedFromCashFlow != true }.sorted { $0.date < $1.date }.map {
             [CSVCodec.dateString($0.date), $0.kind.rawValue, String($0.amount), $0.category.rawValue, $0.merchant, $0.note]
                 .map(CSVCodec.escape).joined(separator: ",")
         }

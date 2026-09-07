@@ -24,11 +24,13 @@ struct AccountsView: View {
                     } }
                 }
             }
-            Section { Label("残高は登録した開始残高と明細から計算します。証券の時価は口座の編集画面から手動で更新できます。", systemImage: "info.circle").font(.caption).foregroundStyle(.secondary) }
+            Section { Label("自動連携の口座は取得した残高を表示します。手動口座は開始残高と明細から計算します。", systemImage: "info.circle").font(.caption).foregroundStyle(.secondary) }
         }.navigationTitle("資産")
-        .toolbar { ToolbarItem(placement: .topBarTrailing) { Button { adding = true } label: { Image(systemName: "plus") }.accessibilityLabel("口座を追加").accessibilityIdentifier("addAccount") } }
+        .toolbar { ToolbarItemGroup(placement: .topBarTrailing) { RefreshControl(); Button { adding = true } label: { Image(systemName: "plus") }.accessibilityLabel("口座を追加").accessibilityIdentifier("addAccount") } }
         .sheet(isPresented: $adding) { AccountEditor() }
-        .sheet(item: $editing) { AccountEditor(account: $0) }
+        .sheet(item: $editing) { account in
+            if account.remote != nil { SyncedAccountDetail(account: account) } else { AccountEditor(account: account) }
+        }
     }
 }
 

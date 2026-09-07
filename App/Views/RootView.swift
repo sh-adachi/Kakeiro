@@ -24,5 +24,16 @@ struct RootView: View {
                 .background(Palette.canvas)
             }
         }
+        .task(id: scenePhase) {
+            guard scenePhase == .active else { return }
+            if store.loadFailure != nil { store.reload() }
+            while !Task.isCancelled {
+                _ = await store.refresh()
+                do { try await Task.sleep(for: .seconds(60)) } catch { break }
+            }
+        }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .background { store.cancelRefresh(); BackgroundRefresh.schedule() }
+        }
     }
 }

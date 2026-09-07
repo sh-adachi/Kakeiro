@@ -10,7 +10,10 @@ public enum FinanceCalculator {
     }
 
     public static func balance(for account: LedgerAccount, in state: LedgerState) -> Int64 {
-        state.transactions.reduce(account.openingBalance) { balance, transaction in
+        // A provider balance already includes its transaction history. Reapplying
+        // imported entries would count purchases and repayments twice.
+        if let remote = account.remote { return remote.balance }
+        return state.transactions.reduce(account.openingBalance) { balance, transaction in
             var result = balance
             if transaction.accountID == account.id {
                 result = add(result, transaction.kind == .income ? transaction.amount : negate(transaction.amount))
@@ -36,16 +39,16 @@ public enum FinanceCalculator {
     }
 
     public static func monthlyIncome(in state: LedgerState, month: Date) -> Int64 {
-        transactions(in: state, month: month).filter { $0.kind == .income }.reduce(0) { add($0, $1.amount) }
+        transactions(in: state, month: month).filter { $0.kind == .income && $0.remote?.excludedFromCashFlow != true }.reduce(0) { add($0, cashFlowAmount($1)) }
     }
 
     public static func monthlyExpense(in state: LedgerState, month: Date) -> Int64 {
-        transactions(in: state, month: month).filter { $0.kind == .expense }.reduce(0) { add($0, $1.amount) }
+        transactions(in: state, month: month).filter { $0.kind == .expense && $0.remote?.excludedFromCashFlow != true }.reduce(0) { add($0, cashFlowAmount($1)) }
     }
 
     public static func categoryExpenses(in state: LedgerState, month: Date) -> [ExpenseCategory: Int64] {
-        transactions(in: state, month: month).filter { $0.kind == .expense }.reduce(into: [:]) {
-            $0[$1.category] = add($0[$1.category, default: 0], $1.amount)
+        transactions(in: state, month: month).filter { $0.kind == .expense && $0.remote?.excludedFromCashFlow != true }.reduce(into: [:]) {
+            $0[$1.category] = add($0[$1.category, default: 0], cashFlowAmount($1))
         }
     }
 
@@ -58,6 +61,10 @@ public enum FinanceCalculator {
 
     // Validated states cannot overflow these calculations. Saturation also prevents a
     // malformed, unsaved draft from crashing a view before validation can explain it.
+    private static func cashFlowAmount(_ transaction: LedgerTransaction) -> Int64 {
+        transaction.remote?.isReversal == true ? negate(transaction.amount) : transaction.amount
+    }
+
     private static func add(_ lhs: Int64, _ rhs: Int64) -> Int64 {
         let (result, overflow) = lhs.addingReportingOverflow(rhs)
         return overflow ? (rhs >= 0 ? .max : .min) : result

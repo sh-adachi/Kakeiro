@@ -5,6 +5,7 @@ struct DashboardView: View {
     @Environment(AppStore.self) private var store
     @State private var addingTransaction = false
     @State private var addingAccount = false
+    @State private var showingConnections = false
     @State private var editingTransaction: LedgerTransaction?
     private var expense: Int64 { FinanceCalculator.monthlyExpense(in: store.state, month: store.selectedMonth) }
     private var income: Int64 { FinanceCalculator.monthlyIncome(in: store.state, month: store.selectedMonth) }
@@ -20,6 +21,7 @@ struct DashboardView: View {
                     Spacer()
                     Image(systemName: "leaf.fill").font(.title2).foregroundStyle(Palette.teal).padding(14).background(Palette.mint.opacity(0.5), in: Circle())
                 }.padding(.top, 8)
+                Panel { SyncStatusContent() }
                 if store.state.accounts.isEmpty { welcome }
                 else {
                     wealthCard
@@ -34,16 +36,19 @@ struct DashboardView: View {
                     categories
                     recentTransactions
                 }
-                Text("端末内に保存 · 金融機関の自動連携は未接続").font(.caption2).foregroundStyle(.secondary).frame(maxWidth: .infinity).padding(.bottom, 8)
+                Text("自動取得＋手動の補足データ").font(.caption2).foregroundStyle(.secondary).frame(maxWidth: .infinity).padding(.bottom, 8)
             }.padding(.horizontal, 20)
         }
         .background(Palette.canvas)
         .navigationTitle("かけいろ")
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar { ToolbarItem(placement: .topBarTrailing) { Button { addingTransaction = true } label: { Image(systemName: "plus") }.accessibilityLabel("明細を追加").accessibilityIdentifier("addTransaction").disabled(store.state.accounts.isEmpty) } }
+        .toolbar { ToolbarItemGroup(placement: .topBarTrailing) { RefreshControl(); Button { addingTransaction = true } label: { Image(systemName: "plus") }.accessibilityLabel("明細を追加").accessibilityIdentifier("addTransaction").disabled(store.manualAccounts.isEmpty) } }
         .sheet(isPresented: $addingTransaction) { TransactionEditor() }
         .sheet(isPresented: $addingAccount) { AccountEditor() }
-        .sheet(item: $editingTransaction) { TransactionEditor(transaction: $0) }
+        .sheet(item: $editingTransaction) { item in
+            if item.remote != nil { SyncedTransactionDetail(transaction: item) } else { TransactionEditor(transaction: item) }
+        }
+        .sheet(isPresented: $showingConnections) { NavigationStack { ConnectionsView() } }
     }
 
     private var welcome: some View {
@@ -51,7 +56,8 @@ struct DashboardView: View {
             Image(systemName: "chart.bar.xaxis.ascending").font(.system(size: 44, weight: .light))
             Text("残高も、日々の支出も。\nここから整えよう。").font(.title.bold()).fixedSize(horizontal: false, vertical: true)
             Text("銀行・カード・証券口座をまとめて、\nあなたのお金の流れが見える家計簿。").font(.subheadline).lineSpacing(5)
-            Button { addingAccount = true } label: { Text("最初の口座を登録").font(.headline).frame(maxWidth: .infinity).padding(.vertical, 8) }.buttonStyle(.borderedProminent).tint(.white).foregroundStyle(Palette.teal)
+            Button { showingConnections = true } label: { Text("金融機関を連携して始める").font(.headline).frame(maxWidth: .infinity).padding(.vertical, 8) }.buttonStyle(.borderedProminent).tint(.white).foregroundStyle(Palette.teal)
+            Button("手動管理の口座を追加") { addingAccount = true }.font(.subheadline).foregroundStyle(.white).frame(maxWidth: .infinity)
             Button("サンプルで試す") { store.loadSample() }.font(.subheadline.weight(.semibold)).foregroundStyle(.white).frame(maxWidth: .infinity).accessibilityIdentifier("loadSample")
             Text("サンプルの口座・金額はすべて架空です。").font(.caption2).foregroundStyle(.white.opacity(0.8))
         }.padding(26).frame(maxWidth: .infinity, alignment: .leading).foregroundStyle(.white).background(Palette.teal.gradient, in: RoundedRectangle(cornerRadius: 28))
@@ -91,7 +97,7 @@ struct DashboardView: View {
                 Text(budget > 0 ? "あと \(yen(max(0, remainder)))" : "未設定").font(.subheadline.weight(.semibold)).foregroundStyle(remainder < 0 ? Palette.coral : Palette.teal)
             }
             if budget > 0 {
-                ProgressView(value: min(Double(expense), Double(budget)), total: Double(budget)).tint(remainder < 0 ? Palette.coral : Palette.teal)
+                ProgressView(value: max(0, min(Double(expense), Double(budget))), total: Double(budget)).tint(remainder < 0 ? Palette.coral : Palette.teal)
                 HStack {
                     Text(remainder < 0 ? "\(yen(-remainder)) 超過" : "無理のないペースで続けよう")
                     Spacer()
@@ -108,12 +114,13 @@ struct DashboardView: View {
             HStack { Text("支出の内訳").font(.headline); Spacer(); Text("\(sorted.count) カテゴリ").font(.caption).foregroundStyle(.secondary) }
             if sorted.isEmpty { Text("この月の支出はまだありません。").font(.subheadline).foregroundStyle(.secondary).padding(.vertical, 12) }
             else {
-                Chart(sorted, id: \.key) { entry in
+                Chart(sorted.filter { $0.value > 0 }, id: \.key) { entry in
                     SectorMark(angle: .value("金額", entry.value), innerRadius: .ratio(0.73), angularInset: 2)
                         .cornerRadius(4).foregroundStyle(Palette.color(entry.key))
                         .accessibilityLabel(entry.key.title).accessibilityValue(yen(entry.value))
                 }.frame(height: 180).chartLegend(.hidden)
                     .overlay { VStack(spacing: 6) { Text("支出合計").font(.caption).foregroundStyle(.secondary); Text(yen(expense)).font(.headline).monospacedDigit() }.accessibilityHidden(true) }
+                if sorted.contains(where: { $0.value < 0 }) { Text("返金が支出を上回るカテゴリはグラフの対象外です。支出合計には反映しています。").font(.caption).foregroundStyle(.secondary) }
                 ForEach(sorted.prefix(4), id: \.key) { entry in
                     HStack { Circle().fill(Palette.color(entry.key)).frame(width: 8, height: 8); Text(entry.key.title).font(.subheadline); Spacer(); Text(yen(entry.value)).font(.subheadline.weight(.medium)).monospacedDigit(); Text("\(Int(Double(entry.value) / max(1, Double(expense)) * 100))%").font(.caption).foregroundStyle(.secondary).frame(width: 38, alignment: .trailing) }
                 }

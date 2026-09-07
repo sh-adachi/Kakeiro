@@ -74,15 +74,17 @@ public struct LedgerAccount: Codable, Identifiable, Hashable, Sendable {
     /// Yen. Negative values represent debt, including outstanding card charges.
     public var openingBalance: Int64
     public var note: String
+    public var remote: RemoteAccountMetadata?
 
     public init(id: UUID = UUID(), name: String, institution: String, kind: AccountKind,
-                openingBalance: Int64, note: String = "") {
+                openingBalance: Int64, note: String = "", remote: RemoteAccountMetadata? = nil) {
         self.id = id
         self.name = name
         self.institution = institution
         self.kind = kind
         self.openingBalance = openingBalance
         self.note = note
+        self.remote = remote
     }
 }
 
@@ -97,10 +99,11 @@ public struct LedgerTransaction: Codable, Identifiable, Hashable, Sendable {
     public var merchant: String
     public var note: String
     public var destinationAccountID: UUID?
+    public var remote: RemoteTransactionMetadata?
 
     public init(id: UUID = UUID(), accountID: UUID, kind: TransactionKind, amount: Int64,
                 date: Date = Date(), category: ExpenseCategory = .other, merchant: String,
-                note: String = "", destinationAccountID: UUID? = nil) {
+                note: String = "", destinationAccountID: UUID? = nil, remote: RemoteTransactionMetadata? = nil) {
         self.id = id
         self.accountID = accountID
         self.kind = kind
@@ -110,6 +113,7 @@ public struct LedgerTransaction: Codable, Identifiable, Hashable, Sendable {
         self.merchant = merchant
         self.note = note
         self.destinationAccountID = destinationAccountID
+        self.remote = remote
     }
 }
 
@@ -118,13 +122,18 @@ public struct LedgerState: Codable, Hashable, Sendable {
     public var accounts: [LedgerAccount]
     public var transactions: [LedgerTransaction]
     public var monthlyBudget: Int64
+    public var lastSyncAt: Date?
+    public var syncRevision: Int?
 
     public init(schemaVersion: Int = 1, accounts: [LedgerAccount] = [],
-                transactions: [LedgerTransaction] = [], monthlyBudget: Int64 = 150_000) {
+                transactions: [LedgerTransaction] = [], monthlyBudget: Int64 = 150_000,
+                lastSyncAt: Date? = nil, syncRevision: Int? = nil) {
         self.schemaVersion = schemaVersion
         self.accounts = accounts
         self.transactions = transactions
         self.monthlyBudget = monthlyBudget
+        self.lastSyncAt = lastSyncAt
+        self.syncRevision = syncRevision
     }
     public static var empty: LedgerState { LedgerState() }
 }

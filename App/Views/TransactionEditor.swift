@@ -36,9 +36,9 @@ struct TransactionEditor: View {
                 } footer: { if kind == .transfer { Text("口座間の移動とカードの支払いは振替で記録します。月の収入・支出には含みません。") } }
                 Section("明細の内容") {
                     DatePicker("日付", selection: $date, displayedComponents: .date)
-                    Picker(kind == .transfer ? "振替元" : "口座", selection: $accountID) { Text("選択してください").tag(Optional<UUID>.none); ForEach(store.state.accounts) { Text($0.name).tag(Optional($0.id)) } }.accessibilityIdentifier("transactionAccount")
+                    Picker(kind == .transfer ? "振替元" : "口座", selection: $accountID) { Text("選択してください").tag(Optional<UUID>.none); ForEach(store.manualAccounts) { Text($0.name).tag(Optional($0.id)) } }.accessibilityIdentifier("transactionAccount")
                     if kind == .transfer {
-                        Picker("振替先", selection: $destinationID) { Text("選択してください").tag(Optional<UUID>.none); ForEach(store.state.accounts.filter { $0.id != accountID }) { Text($0.name).tag(Optional($0.id)) } }.accessibilityIdentifier("transactionDestination")
+                        Picker("振替先", selection: $destinationID) { Text("選択してください").tag(Optional<UUID>.none); ForEach(store.manualAccounts.filter { $0.id != accountID }) { Text($0.name).tag(Optional($0.id)) } }.accessibilityIdentifier("transactionDestination")
                     } else {
                         Picker("カテゴリ", selection: $category) { ForEach(ExpenseCategory.allCases) { Label($0.title, systemImage: $0.systemImage).tag($0) } }
                     }
@@ -52,7 +52,7 @@ struct TransactionEditor: View {
                 ToolbarItem(placement: .cancellationAction) { Button("キャンセル") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) { Button("保存") { save() }.fontWeight(.semibold).accessibilityIdentifier("saveTransaction") }
             }
-            .onAppear { if accountID == nil { accountID = store.state.accounts.first?.id } }
+            .onAppear { if accountID == nil { accountID = store.manualAccounts.first?.id } }
             .onChange(of: kind) { _, newValue in if transaction == nil { category = newValue == .income ? .salary : .food } }
             .onChange(of: accountID) { _, newValue in if destinationID == newValue { destinationID = nil } }
             .confirmationDialog("この明細を削除しますか？", isPresented: $deleting, titleVisibility: .visible) {

@@ -1,0 +1,36 @@
+services:
+  backend:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      KAKEIRO_BIND: 0.0.0.0
+      KAKEIRO_DATABASE: /data/kakeiro.sqlite3
+    volumes:
+      - financial-data:/data
+    # Backend has no public host port. Only the TLS proxy can reach it.
+    expose:
+      - "8787"
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    environment:
+      KAKEIRO_DOMAIN: ${KAKEIRO_DOMAIN:?Set your own domain in .env}
+    ports:
+      - "443:443"
+      - "80:80"
+    volumes:
+      - ./Caddyfile.example:/etc/caddy/Caddyfile:ro
+      - tls-data:/data
+      - tls-config:/config
+
+volumes:
+  financial-data:
+  tls-data:
+  tls-config:

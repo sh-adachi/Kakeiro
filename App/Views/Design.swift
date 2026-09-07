@@ -62,6 +62,8 @@ struct IconTile: View {
 struct TransactionRow: View {
     @Environment(AppStore.self) private var store
     let transaction: LedgerTransaction
+    private var reversal: Bool { transaction.remote?.isReversal == true }
+    private var incoming: Bool { (transaction.kind == .income) != reversal }
     var body: some View {
         HStack(spacing: 12) {
             IconTile(symbol: transaction.kind == .transfer ? "arrow.left.arrow.right" : transaction.category.systemImage, color: transaction.kind == .income ? Palette.teal : Palette.color(transaction.category))
@@ -71,8 +73,8 @@ struct TransactionRow: View {
             }
             Spacer(minLength: 6)
             VStack(alignment: .trailing, spacing: 5) {
-                Text((transaction.kind == .expense ? "−" : transaction.kind == .income ? "+" : "") + yen(transaction.amount)).font(.subheadline.weight(.semibold)).monospacedDigit().foregroundStyle(transaction.kind == .income ? Palette.teal : .primary)
-                Text(transaction.kind == .transfer ? "振替" : transaction.category.title).font(.caption2).foregroundStyle(.secondary)
+                Text((transaction.kind == .transfer ? "" : incoming ? "+" : "−") + yen(transaction.amount)).font(.subheadline.weight(.semibold)).monospacedDigit().foregroundStyle(incoming ? Palette.teal : .primary)
+                Text(transaction.kind == .transfer ? "振替" : transaction.remote?.excludedFromCashFlow == true ? "集計対象外" : reversal ? "返金・取消" : transaction.category.title).font(.caption2).foregroundStyle(.secondary)
             }
         }.padding(.vertical, 5).contentShape(Rectangle())
     }
@@ -91,7 +93,7 @@ struct AccountRow: View {
             Spacer()
             VStack(alignment: .trailing, spacing: 5) {
                 Text(yen(FinanceCalculator.balance(for: account, in: store.state))).font(.subheadline.weight(.semibold)).monospacedDigit().foregroundStyle(.primary)
-                Text("手動管理").font(.caption2).foregroundStyle(.secondary)
+                Text(account.remote == nil ? "手動管理" : "自動取得").font(.caption2).foregroundStyle(.secondary)
             }
         }.padding(.vertical, 6).contentShape(Rectangle())
     }

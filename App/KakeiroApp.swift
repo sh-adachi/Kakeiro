@@ -2,7 +2,13 @@ import SwiftUI
 
 @main
 struct KakeiroApp: App {
-    @State private var store = AppStore()
+    @State private var store: AppStore
+
+    init() {
+        let store = AppStore()
+        _store = State(initialValue: store)
+        BackgroundRefresh.register(store: store)
+    }
 
     var body: some Scene {
         WindowGroup {

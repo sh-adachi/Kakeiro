@@ -177,7 +177,7 @@ final class KakeiroCoreTests: XCTestCase {
         XCTAssertEqual(imported.transactions[0].merchant, "スーパー,駅前")
         XCTAssertEqual(imported.transactions[0].note, "パン\"特売\"\n食材")
         XCTAssertEqual(imported.transactions[1].kind, .income)
-        let exported = CSVExporter.transactions(in: imported)
+        let exported = try CSVExporter.transactions(in: imported)
         let again = try CSVImporter.importTransactions(text: exported, accountID: account.id, into: LedgerState(accounts: [account]))
         XCTAssertEqual(again.transactions.map(\.merchant), imported.transactions.map(\.merchant))
         XCTAssertEqual(again.transactions.map(\.note), imported.transactions.map(\.note))
@@ -248,7 +248,7 @@ final class KakeiroCoreTests: XCTestCase {
 
     func testCSVExportExcludesTransfers() throws {
         let state = SampleData.make(now: date("2026-09-06T03:00:00Z"))
-        let csv = CSVExporter.transactions(in: state)
+        let csv = try CSVExporter.transactions(in: state)
         XCTAssertFalse(csv.contains(",transfer,"))
         let account = bank()
         let imported = try CSVImporter.importTransactions(text: csv, accountID: account.id, into: LedgerState(accounts: [account]))
