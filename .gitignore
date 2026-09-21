@@ -11,9 +11,6 @@ xcuserdata/
 *.ipa
 *.dSYM/
 *.xcarchive/
-Artifacts/*.log
-Artifacts/current.png
-Artifacts/Attachments/
 .env
 .env.*
 !.env.example
@@ -31,3 +28,14 @@ Backend/data/
 *.sqlite
 *.sqlite-*
 *.server.lock
+
+# Personal signing settings stay on this computer.
+Config/Signing.local.xcconfig
+
+# Only reviewed sample screenshots belong in Git.
+/Artifacts/*
+!/Artifacts/accounts.png
+!/Artifacts/connections.png
+!/Artifacts/home.png
+!/Artifacts/transactions.png
+!/Artifacts/welcome.png

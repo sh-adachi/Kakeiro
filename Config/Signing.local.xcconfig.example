@@ -1,0 +1,3 @@
+// Copy this file to Signing.local.xcconfig and enter your Apple Team ID.
+// The local file is ignored by Git and used by Xcode and deploy_iphone.sh.
+DEVELOPMENT_TEAM =

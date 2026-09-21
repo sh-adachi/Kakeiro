@@ -1,0 +1,4 @@
+// Shared project settings contain no personal signing identity.
+// Device builds read the optional local file; simulator builds need no Team.
+DEVELOPMENT_TEAM =
+#include? "Signing.local.xcconfig"

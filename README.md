@@ -2,9 +2,7 @@
 
 銀行・クレジットカード・証券・現金をまとめて管理する、iPhone向けの家計簿・資産管理アプリです。SwiftUIで実装し、iOS 17以降に対応しています。
 
-`/Users/adachi/Developer/Kakeiro` に作成した独立したGitリポジトリです。Yumeguri・Tabioriへの依存はありません。
-
-GitHubの非公開リポジトリ：[sh-adachi/Kakeiro](https://github.com/sh-adachi/Kakeiro)。
+GitHub：[sh-adachi/Kakeiro](https://github.com/sh-adachi/Kakeiro)。
 
 **v0.2では自動連携を主軸に、更新ボタン・日本時間0時のサーバー定期取得・取得済みデータのiPhoneへの反映を実装しています。API・サーバーは未契約のため、実口座の自動取得はまだ有効ではありません。** 手動管理・CSVと架空データでの検証は契約なしで利用できます。
 
@@ -69,16 +67,17 @@ JSONバックアップには家計情報が含まれ、アプリ独自のパス�
 
 ## 金融機関との自動連携
 
-6機関を対象に、Moneytree LINKなどの公式資料と接続条件を調査しています。楽天銀行の提携アプリ制限、証券会社の追加認証やパスキー制約があり、対応機関一覧への掲載だけではKakeiroから接続できるとは限りません。
+Moneytree LINKなどの公式資料と接続条件を整理しています。楽天銀行の提携アプリ制限、証券会社の追加認証やパスキー制約があり、対応機関一覧への掲載だけではKakeiroから接続できるとは限りません。
 
-認可処理・個人1人用バックエンド・同期処理は実装済みです。利用契約・検証用設定・6機関の対応範囲と金額の実照合は未完了です。円建て残高と明細が対象で、銘柄別表示・外貨換算は未対応です。銀行・証券のパスワードをKakeiroが直接取得する実装はありません。詳しい条件と公式資料は [金融機関連携の設計メモ](Docs/FinancialConnections.md) を参照してください。
+認可処理・個人1人用バックエンド・同期処理は実装済みです。利用契約・検証用設定・対象金融機関の対応範囲と金額の実照合は未完了です。円建て残高と明細が対象で、銘柄別表示・外貨換算は未対応です。銀行・証券のパスワードをKakeiroが直接取得する実装はありません。詳しい条件と公式資料は [金融機関連携の設計メモ](Docs/FinancialConnections.md) を参照してください。
 
 ## ビルドする
 
 Xcodeで `Kakeiro.xcodeproj` を開き、Schemeを `Kakeiro`、実行先をiPhoneまたはiPhoneシミュレータにしてRunします。外部ライブラリやAPIキーなしで、手動管理機能を利用できます。
 
 ```sh
-cd /Users/adachi/Developer/Kakeiro
+# cloneしたリポジトリに移動
+cd Kakeiro
 open Kakeiro.xcodeproj
 
 # 単体テスト
@@ -95,7 +94,13 @@ xcrun xctrace list devices
 bash Scripts/deploy_iphone.sh <iPhoneのUDID>
 ```
 
-個人用の開発Teamを設定しています。Bundle Identifierは `dev.adachi.kakeiro`。別のApple Accountを使う場合は、XcodeのSigning & CapabilitiesでTeamとBundle Identifierを変更します。実機はMacとの信頼設定・開発者モードが必要です。開発用署名の期限が切れた場合は再ビルドしてください。App Storeへの公開は行っていません。
+実機向けのTeam IDは、Git管理外の `Config/Signing.local.xcconfig` に設定します。初回のみ次のテンプレートをコピーし、`DEVELOPMENT_TEAM` に自分のTeam IDを入力してください。Xcodeと実機導入スクリプトが自動的に読み込みます。シミュレータではこの設定は不要です。
+
+```sh
+cp -n Config/Signing.local.xcconfig.example Config/Signing.local.xcconfig
+```
+
+XcodeにApple Accountを登録し、端末との信頼設定と開発者モードを有効にしてください。別の開発者が利用する場合は、必要に応じてBundle Identifierも自身のものに変更します。実機では `CODE_SIGNING_ALLOWED=NO` を指定しません。
 
 ## 検証と構成
 
@@ -105,9 +110,9 @@ bash Scripts/deploy_iphone.sh <iPhoneのUDID>
 
 単体テスト17件が成功。カード返済の二重計上防止、日本時間の月境界、負債、JSON保存失敗・破損ファイルの保護、CSVの引用・改行・不正行・重複を確認しています。
 
-2026年9月7日、Xcode 26.3でバージョン0.1（ビルド1）の署名付き実機ビルドが成功し、接続したiPhone（iOS 26.6）へのインストール・起動に成功しました。アプリ一覧の「かけいろ」から開けます。
+バージョン0.1では、署名付き実機ビルド・インストール・起動を確認しています。
 
-iPhone 17 Proシミュレータで、画面操作テスト6ケースの成功を確認しています。空の初回画面・サンプル表示・指定6機関の未接続表示、口座と明細の追加/編集/削除・残高の再計算・再起動後の復元、予算の保存、証券評価額のキャンセルと保存を対象とします。
+iPhone 17 Proシミュレータで、画面操作テスト6ケースの成功を確認しています。空の初回画面・サンプル表示・金融機関候補の未接続表示、口座と明細の追加/編集/削除・残高の再計算・再起動後の復元、予算の保存、証券評価額のキャンセルと保存を対象とします。
 
 結果はローカルの `Artifacts/VerifiedUITests.xcresult`（表示確認3件）、`Artifacts/FinalUITests.xcresult`（テストの入力操作修正後の再実行2件）、`Artifacts/ValuationUITests.xcresult`（証券評価額1件）に保存しています。初回の入力テストはカーソル位置により数値を置換できず失敗したため、テスト操作を修正して通過を確認しました。結果バンドルとログはGit管理の対象外です。
 
