@@ -1,2 +1,5 @@
 httpx==0.28.1
-cryptography==46.0.5
+# Pin HTTPX's transitive dependency to the patched TLS/process-pool release.
+# AnyIO 4.14.2 requires Python 3.10 or newer.
+anyio==4.14.2
+cryptography==50.0.1

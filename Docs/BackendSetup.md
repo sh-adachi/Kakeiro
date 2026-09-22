@@ -11,9 +11,11 @@ Kakeiro v0.2は個人1人用です。実口座との接続・サーバーへの�
 
 ## ローカル準備
 
+Python 3.10 以上が必要です。以下は CI・Docker と揃えた Python 3.12 の例です。macOS 付属の Python 3.9 では、セキュリティ修正版の依存パッケージをインストールできません。
+
 ```sh
 cd Backend
-python3 -m venv .venv
+python3.12 -m venv .venv
 .venv/bin/pip install -r requirements.txt
 .venv/bin/python generate_env.py
 ```
